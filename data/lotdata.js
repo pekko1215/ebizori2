@@ -5,13 +5,13 @@
 var lotdata = {
     normal: [
         {   name:"リプレイ",
-            value:1/32},
+            value:1/29},
         {   name:"ベル",
-            value:1/18},
+            value:1/11},
         {   name:"チェリー",
             value:1/64},
         {   name:'1枚役',
-            value:1/16},
+            value:1/8},
         {   name:"BIG",
             value:1/150},
         {   name:'REG',
@@ -21,7 +21,7 @@ var lotdata = {
         {   name:'異色REG',
             value:1/70},
         {   name:'転落BB',
-            value:1/16},
+            value:1/24},
         {   name:'MB',
             value:1/1.3}
     ],

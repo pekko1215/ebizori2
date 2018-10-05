@@ -8,6 +8,7 @@ function main() {
     var kokutid;
     var kokuti;
     var lastControl;
+    var rushcoin = 0;
     window.rt = {
         mode: null,
         game: 250
@@ -57,7 +58,6 @@ function main() {
                 case 'normal':
                     switch (d.name) {
                         case 'BIG':
-                            sounder.stopSound("bgm");
                             setGamemode('REG');
                             bonusdata = {
                                 bonusget: 195,
@@ -71,7 +71,6 @@ function main() {
                             kokutid = false;
                             break;
                         case 'REG':
-                            sounder.stopSound("bgm");
                             setGamemode('REG');
                             bonusdata = {
                                 bonusget: 90,
@@ -85,16 +84,17 @@ function main() {
                             kokutid = false;
                             break
                         case 'MB':
-                            $('#ebiwrap').addClass('display');
-                            $('#ebi').addClass('display');
-                            sounder.playSound('kokuti')
-                            setTimeout(() => {
-                                $('#ebiwrap').removeClass('display');
-                                $('#ebi').removeClass('display');
-                            }, 1000)
-                            kokutid = true;
+                            if(!kokutid){
+                                $('#ebiwrap').addClass('display');
+                                $('#ebi').addClass('display');
+                                setTimeout(() => {
+                                    $('#ebiwrap').removeClass('display');
+                                    $('#ebi').removeClass('display');
+                                }, 1000)
+                                sounder.playSound('kokuti');
+                                kokutid = true;
+                            }
                             kokuti = false;
-                            sounder.stopSound("bgm");
                             setGamemode('REG');
                             bonusdata = {
                                 bonusget: 15,
@@ -105,7 +105,7 @@ function main() {
                             clearLamp()
                             jacflag = false
                             kokuti = false;
-                            kokutid = false;
+                            sounder.playSound('mb');
                             break
                         case '転落BB1':
                         case '転落BB2':
@@ -153,6 +153,23 @@ function main() {
                                 slotmodule.setFlash(replaceMatrix(flashdata.default, matrix, colordata.LINE_F, null), 2, arguments.callee)
                             })
                             break;
+                        case '同色REG':
+                        case '異色REG':
+                            sounder.stopSound("bgm");
+                            setGamemode('JAC');
+                            bonusdata = {
+                                mode: d.name,
+                                jacgamecount: d.name === '同色REG' ? 10 : 1,
+                                jacgetcount: 1
+                            }
+                            bonusflag = null;
+                            changeBonusSeg()
+                            clearLamp()
+                            jacflag = false
+                            kokuti = false;
+                            kokutid = false;
+                            $("#effect").hide();
+                            break
                     }
                     break;
                 case 'big':
@@ -173,7 +190,6 @@ function main() {
                             kokuti = false;
                             kokutid = false;
                             $("#effect").hide();
-                            break
                             break
                         case "チェリー":
                             matrix = matrix.map((arr) => {
@@ -219,13 +235,57 @@ function main() {
             }
         })
         if (gamemode != 'normal' && bonusdata.geted + e.pay >= bonusdata.bonusget) {
-            setGamemode('normal');
-            sounder.stopSound("bgm")
+            // sounder.stopSound("bgm")
             segments.effectseg.reset();
+            if(gamemode == 'big'){
+                slotmodule.freeze();
+                Typewriter('エビゾリラッシュ<br>確定！',{
+                    speed:150,
+                    delay:5000,
+                }).change((t)=>{
+                    t!="\n"&&sounder.playSound('type');
+                }).title(()=>{
+                    sounder.playSound('title');
+                }).finish((e)=>{
+                    e.parentNode.removeChild(e);
+                    setTimeout(()=>{
+                        slotmodule.resume();
+                    },1000)
+                });
+            }
+            if(gamemode == 'big'){
+				rushcoin = 0;
+				slotmodule.once('bet',()=>{
+					$('#panel').attr({src:`./img/ebirush.png`});
+					$('#effect').hide();
+					sounder.playSound('rushstart',false,()=>{
+						sounder.playSound('RUSHBGM',true)
+					})
+					setTimeout(()=>{
+						$('#panel').attr({src:`./img/uppanel.png`});
+						$('#effect').show();
+					},2000)
+				})
+            }
+            setGamemode('normal');
         }
         if (gamemode == 'jac') {
             if (bonusdata.jacgamecount <= 0 || bonusdata.jacgetcount <= 0) {
-                setGamemode('normal')
+	            setGamemode('normal');
+	            if(bonusdata.jacgetcount <= 0){
+					rushcoin = 0;
+					slotmodule.once('bet',()=>{
+						$('#panel').attr({src:`./img/ebirush.png`});
+						$('#effect').hide();
+						sounder.playSound('rushstart',false,()=>{
+							sounder.playSound('RUSHBGM',true)
+						})
+						setTimeout(()=>{
+							$('#panel').attr({src:`./img/uppanel.png`});
+							$('#effect').show();
+						},2000)
+					})
+				}
             }
         }
         if (nexter) {
@@ -243,23 +303,24 @@ function main() {
                     coin--;
                     e.coin--;
                     incoin++;
+                    rushcoin --;
                     changeCredit(-1);
                     setTimeout(function() {
                         thisf(e)
                     }, 100)
                 } else {
-                    if (kokuti) {
-                        $('#ebiwrap').addClass('display');
-                        $('#ebi').addClass('display');
-                        slotmodule.freeze();
-                        sounder.playSound('kokuti', false, () => {
-                            $('#ebiwrap').removeClass('display');
-                            $('#ebi').removeClass('display');
-                            slotmodule.resume();
-                        })
-                        kokutid = true;
-                        kokuti = false;
-                    }
+                    // if (kokuti) {
+                    //     $('#ebiwrap').addClass('display');
+                    //     $('#ebi').addClass('display');
+                    //     slotmodule.freeze();
+                    //     sounder.playSound('kokuti', false, () => {
+                    //         $('#ebiwrap').removeClass('display');
+                    //         $('#ebi').removeClass('display');
+                    //         slotmodule.resume();
+                    //     })
+                    //     kokutid = true;
+                    //     kokuti = false;
+                    // }
                     e.betend();
                 }
             })(e)
@@ -288,8 +349,13 @@ function main() {
             }
             if (pays <= 4 && pays) e.se = "cherry";
             if (pays >= 14) e.se = "bigpay"
+            if (gamemode === 'reg' || (pays == 15 && gamemode == 'normal')) e.se = 'mbpay'
             if (!replayflag && !notplaypaysound) {
-                sounder.playSound(e.se, e.se != "cherry");
+                if(e.se == 'mbpay'){
+                    sounder.playSound(e.se,true,()=>{},0,0.1);
+                }else{
+                    sounder.playSound(e.se, e.se != "cherry");
+                }
             }
         }
         if (pays == 0) {
@@ -315,6 +381,10 @@ function main() {
             if (gamemode != "normal" && !bonusflag) {
                 bonusdata.geted++;
             }
+            if (e.se === 'mbpay'){
+				rushcoin ++;
+				showRushCoin();
+            }
             changeCredit(1);
             segments.payseg.setSegments(e.paycount)
             setTimeout(function() {
@@ -330,14 +400,15 @@ function main() {
         var lot;
         switch (gamemode) {
             case "normal":
+                if (slotmodule.playControlData.betcoin === 2) {
+                    ret = '2枚がけBIG';
+                    break
+                }
                 lot = normalLotter.lot().name
-
                 lot = window.power || lot;
                 window.power = undefined
                 switch (lot) {
                     case "リプレイ":
-                    case '異色REG':
-                    case '同色REG':
                         ret = 'リプレイ'
                         break;
                     case "ベル":
@@ -365,8 +436,10 @@ function main() {
                         }
                         break
                     case '転落BB':
+                    case '異色REG':
+                    case '同色REG':
                         if (!bonusflag) {
-                            bonusflag = '転落BB';
+                            bonusflag = lot;
                             ret = 'リプレイ';
                         } else {
                             ret = bonusflag;
@@ -421,7 +494,6 @@ function main() {
                     case "リプレイ":
                         ret = 'リプレイ';
                         break
-                        break;
                     case "ベル":
                         ret = "ベル";
                         break
@@ -564,8 +636,7 @@ function main() {
     sounder.addFile("sound/pay.wav", "pay").addTag("se");
     sounder.addFile("sound/replay.wav", "replay").addTag("se");
     sounder.addFile("sound/BIG1.mp3", "BIG1").addTag("bgm")
-    sounder.addFile("sound/rt1.mp3", "RT1").addTag("bgm")
-    sounder.addFile("sound/rt2.mp3", "RT2").addTag("bgm");
+    sounder.addFile("sound/rushbgm.mp3", "RUSHBGM").addTag("bgm")
     sounder.addFile("sound/title.wav", 'title').addTag("se");
     sounder.addFile("sound/type.mp3", 'type').addTag("se");
     sounder.addFile("sound/yokoku.wav", 'yokoku').addTag("se");
@@ -575,6 +646,9 @@ function main() {
     sounder.addFile("sound/cherry.mp3", "cherry").addTag("se");
     sounder.addFile("sound/bigpay.mp3", "bigpay").addTag("se");
     sounder.addFile("sound/bita.mp3", "bita").addTag("se");
+    sounder.addFile("sound/mb.mp3", "mb").addTag("se");
+    sounder.addFile("sound/mbpay.mp3", "mbpay").addTag("se");
+    sounder.addFile("sound/rushstart.mp3", "rushstart").addTag("se");
 
     sounder.setVolume("se", 0.2)
     sounder.setVolume("bgm", 0.1)
@@ -588,11 +662,14 @@ function main() {
     var jacLotter = new Lotter(lotdata.jac);
 
 
-    var gamemode = "normal";
+    window.gamemode = "big";
     window.bonusflag = null
     var coin = 0;
 
-    var bonusdata;
+    window.bonusdata = {
+        bonusget: 252,
+        geted: 0
+    }
     var replayflag;
 
     var isCT = false;
@@ -618,7 +695,7 @@ function main() {
 
     slotmodule.on("leveron", function() {
 
-        if (gamemode == "normal") {
+        if (gamemode == "big") {
             playcount++;
             allplaycount++;
         } else {
@@ -710,6 +787,7 @@ function main() {
                 slotmodule.setLotMode(0)
                 slotmodule.setMaxbet(3);
                 isSBIG = false
+                kokutid = false;
                 break;
             case 'big':
                 gamemode = 'big';
@@ -822,43 +900,34 @@ function main() {
 
     }
 
-    function nabi(lot) {
-        if (lot == "JACIN") return;
-        var nabiIdx = parseInt(lot.slice(-1)) - 1;
-        var color = nabiIdx % 2 == 0 ? colordata.RED_B : colordata.BLUE_F;
-        var reelIdx = ~~(nabiIdx / 2);
-        var matrix = [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0]
-        ];
-        matrix.forEach(arr => {
-            arr[reelIdx] = 1;
-        })
-        slotmodule.setFlash(replaceMatrix(flashdata.default, matrix, color, null));
-        slotmodule.once('reelstop', () => {
-            slotmodule.clearFlashReservation();
-        })
-    }
-
-    function atEffect(idx) {
-        idx = parseInt(idx.slice(-1)) - 1;
-        $('#nabi' + (1 + idx)).addClass('on');
-        slotmodule.once('allreelstop', () => {
-            $('.nabi').removeClass('on');
-        })
-    }
-
     function effect(lot, orig) {
         switch (gamemode) {
             case 'normal':
                 if (kokutid) return
+                if (slotmodule.playControlData.betcoin === 2) return;
                 var plot = lot;
                 if (lot == 'REG' || bonusflag) { plot = 'BIG' }
-                var eforig = /BIG|REG/.test(lot) ? 'BIG' : orig;
+                var eforig = /BIG|REG|MB/.test(lot) ? 'BIG' : orig;
                 var effect = getEffect[eforig] && getEffect[eforig]();
-                if (!effect) return;
-                sounder.playSound('yokoku');
+                if (!effect || rand(4)) {
+                    if(lot === 'MB'){
+                        setTimeout(()=>{
+                            if(!kokutid){
+                                sounder.playSound('kokuti');
+                                $('#ebiwrap').addClass('display');
+                                $('#ebi').addClass('display');
+                                setTimeout(() => {
+                                    $('#ebiwrap').removeClass('display');
+                                    $('#ebi').removeClass('display');
+                                }, 1000)
+                                kokutid = true;
+                            }
+                        },~~(Math.random()*3000))
+                    }
+                }
+                if(effect){
+					sounder.playSound('yokoku');
+                }
                 break
             case 'big':
                 if (kokutid) return
@@ -891,6 +960,12 @@ function main() {
                 break
         }
     }
+	function showRushCoin(){
+		$('#rushinfo').text(rushcoin);
+		slotmodule.once('bet',()=>{
+			$('#rushinfo').text('');
+		})
+	}
 
 
     $(window).bind("unload", function() {
@@ -898,7 +973,9 @@ function main() {
     });
 
     LoadData();
+    changeBonusSeg();
 }
+
 
 function and() {
     return Array.prototype.slice.call(arguments).every(function(f) {

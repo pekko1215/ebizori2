@@ -524,6 +524,7 @@ function main() {
                         }
                         break
                     case '転落BB':
+						lot = 'リプレイ';
                         ret = 'リプレイ';
                         break
                     case '異色REG':
@@ -543,6 +544,7 @@ function main() {
                         ret = "はずれ"
                         switch (bonusflag) {
                             case null:
+								lot = null;
                                 break
                             default:
                                 ret = bonusflag;
@@ -971,6 +973,23 @@ function main() {
 				});
 				slotmodule.freeze();
 				(async function(){
+					if(lot === '2枚がけ小役' && !rand(8)){
+						sounder.stopSound('bgm')
+						Typewriter('エビビーム<br>エビビビビビ！',{
+							speed:150,
+							delay:5000,
+						}).change((t)=>{
+							t!="\n"&&sounder.playSound('type');
+						}).title(()=>{
+							sounder.playSound('title');
+						}).finish((e)=>{
+							e.parentNode.removeChild(e);
+							setTimeout(()=>{
+								slotmodule.resume();
+							},1000)
+						});
+						return;
+					}
 					for(var i=0;i<=idx;i++){
 						sounder.playSound('step'+(i+1));
 						var src = ['eight_blue','eight_green','eight_red'][i];
@@ -982,9 +1001,8 @@ function main() {
 				})()
 				if(lot == '2枚がけ小役'){
 					slotmodule.once('reelstop',function kakuteion(e){
-						// console.log(e)
 						if(e.reel != 0){
-							return slotmodule.once('stop',kakuteion);
+							return slotmodule.once('reelstop',kakuteion);
 						}
 						sounder.playSound('kakutei');
 						sounder.playSound('step3');

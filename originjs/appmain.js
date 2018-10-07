@@ -156,6 +156,7 @@ function main() {
                         case '同色REG':
                         case '異色REG':
                             sounder.stopSound("bgm");
+                            sounder.playSound('eight',true)
                             setGamemode('JAC');
                             bonusdata = {
                                 mode: d.name,
@@ -169,6 +170,7 @@ function main() {
                             kokuti = false;
                             kokutid = false;
                             $("#effect").hide();
+                            sounder.playSound('eightStart')
                             break
                     }
                     break;
@@ -177,6 +179,7 @@ function main() {
                         case '同色REG':
                         case '異色REG':
                             sounder.stopSound("bgm");
+                            sounder.playSound('eight',true)
                             setGamemode('JAC');
                             bonusdata = {
                                 mode: d.name,
@@ -190,6 +193,7 @@ function main() {
                             kokuti = false;
                             kokutid = false;
                             $("#effect").hide();
+                            sounder.playSound('eightStart')
                             break
                         case "チェリー":
                             matrix = matrix.map((arr) => {
@@ -272,6 +276,7 @@ function main() {
         if (gamemode == 'jac') {
             if (bonusdata.jacgamecount <= 0 || bonusdata.jacgetcount <= 0) {
 	            setGamemode('normal');
+	            sounder.stopSound('bgm')
 	            if(bonusdata.jacgetcount <= 0){
 					rushcoin = 0;
 					slotmodule.once('bet',()=>{
@@ -561,7 +566,7 @@ function main() {
         }
         effect(ret, lot);
         lastControl = ret;
-        console.log(ret)
+        console.log({ret,lot})
         return ret;
     })
 
@@ -637,6 +642,7 @@ function main() {
     sounder.addFile("sound/replay.wav", "replay").addTag("se");
     sounder.addFile("sound/BIG1.mp3", "BIG1").addTag("bgm")
     sounder.addFile("sound/rushbgm.mp3", "RUSHBGM").addTag("bgm")
+    sounder.addFile("sound/eight.mp3", "eight").addTag("bgm")
     sounder.addFile("sound/title.wav", 'title').addTag("se");
     sounder.addFile("sound/type.mp3", 'type').addTag("se");
     sounder.addFile("sound/yokoku.wav", 'yokoku').addTag("se");
@@ -649,6 +655,12 @@ function main() {
     sounder.addFile("sound/mb.mp3", "mb").addTag("se");
     sounder.addFile("sound/mbpay.mp3", "mbpay").addTag("se");
     sounder.addFile("sound/rushstart.mp3", "rushstart").addTag("se");
+    sounder.addFile("sound/eight_kokuti.mp3", "eightKokuti").addTag("se");
+    sounder.addFile("sound/eight_start.mp3", "eightStart").addTag("se");
+    sounder.addFile("sound/step1.mp3", "step1").addTag("se");
+    sounder.addFile("sound/step2.mp3", "step2").addTag("se");
+    sounder.addFile("sound/step3.mp3", "step3").addTag("se");
+    sounder.addFile("sound/kakutei.mp3", "kakutei").addTag("se");
 
     sounder.setVolume("se", 0.2)
     sounder.setVolume("bgm", 0.1)
@@ -740,9 +752,9 @@ function main() {
     }
 
     window.SaveData = function() {
-        if (gamemode != "normal" || isCT) {
-            return false;
-        }
+        // if (gamemode != "normal") {
+        //     return false;
+        // }
         var savedata = stringifySaveData()
         localStorage.setItem("savedata", JSON.stringify(savedata))
         return true;
@@ -933,24 +945,51 @@ function main() {
                 if (kokutid) return
                 var plot = lot;
                 if (lot == 'REG' || bonusflag) { plot = 'BIG' }
-                var eforig = /BIG|REG/.test(lot) ? 'BIG' : orig;
+                var eforig = /色REG/.test(lot) ? 'BIG' : orig;
                 var effect = getEffect[eforig] && getEffect[eforig]();
                 if (!effect) return;
                 sounder.playSound('yokoku');
+                if(/色REG/.test(lot)){
+                    kokutid = true;
+                    slotmodule.once('bet',()=>{
+						if(gamemode !== 'big') return;
+						$('#panel').attr({src:`./img/eight_${bonusflag === '異色REG' ? 'wait1' : 'wait2'}.png`});
+						sounder.playSound('eightKokuti');
+						$('#effect').hide();
+                    })
+                }
                 break
             case 'jac':
 				var table = {
-					'2枚がけリプレイ':[90,9,1],
+					'2枚がけリプレイ':[70,29,1],
 					'2枚がけ小役':[20,60,20]
 				}[lot];
 				var r = rand(100);
 				var idx = table.findIndex(d=>{
 					r -= d;
 					if(r<0){return true}
-				})
-				var src = ['eight_blue','eight_green','eight_red'][idx];
-				$('#panel').attr({src:`./img/${src}.png`});
-				$('#ebi').addClass('display');
+				});
+				slotmodule.freeze();
+				(async function(){
+					for(var i=0;i<=idx;i++){
+						sounder.playSound('step'+(i+1));
+						var src = ['eight_blue','eight_green','eight_red'][i];
+						$('#panel').attr({src:`./img/${src}.png`});
+						await wait(1000);
+					}
+					$('#ebi').addClass('display');
+					slotmodule.resume();
+				})()
+				if(lot == '2枚がけ小役'){
+					slotmodule.once('reelstop',function kakuteion(e){
+						// console.log(e)
+						if(e.reel != 0){
+							return slotmodule.once('stop',kakuteion);
+						}
+						sounder.playSound('kakutei');
+						sounder.playSound('step3');
+					})
+				}
 				slotmodule.once('allreelstop',()=>{
 					$('#panel').attr({src:`./img/uppanel.png`})
 					$('#ebi').removeClass('display');
@@ -1022,4 +1061,8 @@ function segInit(selector, size) {
     sc.setOnColor(230, 0, 0)
     sc.reset();
     return sc;
+}
+
+async function wait(time){
+	await new Promise(r=>setTimeout(r,time));
 }
